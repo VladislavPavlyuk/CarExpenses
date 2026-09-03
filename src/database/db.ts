@@ -18,7 +18,7 @@ export const initDB = () => {
 
 export const getExpensesFromDB = (): Expense[] => {
   const result = db.executeSync('SELECT * FROM expenses ORDER BY date DESC');
-  // В op-sqlite result.rows — це вже звичайний масив
+
   return (result.rows || []) as unknown as Expense[];
 };
 
