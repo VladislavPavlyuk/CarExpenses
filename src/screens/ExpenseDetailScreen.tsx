@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { deleteExpenseFromDB } from '../database/db';
+import { deleteExpenseFromDB, getExpenseFromDBById } from '../database/db';
 import { ThemeContext } from '../context/ThemeContext';
 import { HomeStackParamList } from '../navigation/types';
 
@@ -17,8 +17,17 @@ type Props = NativeStackScreenProps<HomeStackParamList, 'ExpenseDetail'>;
 export const ExpenseDetailScreen = ({ route, navigation }: Props) => {
   const { theme } = useContext(ThemeContext);
   const { item } = route.params;
+  const [expense, setExpense] = useState(item);
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      const fresh = getExpenseFromDBById(item.id);
+      if (fresh) setExpense(fresh);
+    });
+    return unsubscribe;
+  }, [navigation, item.id]);
 
   const handleDelete = () => {
     Alert.alert('Видалення', 'Ви впевнені, що хочете видалити цей запис?', [
@@ -27,7 +36,7 @@ export const ExpenseDetailScreen = ({ route, navigation }: Props) => {
         text: 'Видалити',
         style: 'destructive',
         onPress: () => {
-          deleteExpenseFromDB(item.id);
+          deleteExpenseFromDB(expense.id);
           navigation.goBack();
         },
       },
@@ -43,23 +52,23 @@ export const ExpenseDetailScreen = ({ route, navigation }: Props) => {
       ]}
     >
       <View style={styles.info}>
-        <Text style={[styles.type, { color: theme.text }]}>{item.type}</Text>
+        <Text style={[styles.type, { color: theme.text }]}>{expense.type}</Text>
         <Text style={[styles.amount, { color: theme.danger }]}>
-          {item.amount.toFixed(2)} ₴
+          {expense.amount.toFixed(2)} ₴
         </Text>
-        <Text style={[styles.text, { color: theme.text }]}>Дата: {item.date}</Text>
+        <Text style={[styles.text, { color: theme.text }]}>Дата: {expense.date}</Text>
         <Text style={[styles.text, { color: theme.text }]}>
-          Пробіг: {item.mileage} км
+          Пробіг: {expense.mileage} км
         </Text>
         <Text style={[styles.text, { color: theme.text }]}>
-          Опис: {item.description || '—'}
+          Опис: {expense.description || '—'}
         </Text>
       </View>
 
       <View style={[styles.actions, isLandscape && styles.actionsCol]}>
         <TouchableOpacity
           style={[styles.btn, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate('ExpenseForm', { item })}
+          onPress={() => navigation.navigate('ExpenseForm', { item: expense })}
         >
           <Text style={styles.btnText}>Редагувати</Text>
         </TouchableOpacity>

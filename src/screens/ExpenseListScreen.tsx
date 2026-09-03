@@ -27,7 +27,8 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState('Всі');
-  const [dateFilter, setDateFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [sortField, setSortField] = useState<'date' | 'amount'>('date');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -51,9 +52,12 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
           item.date.includes(q) ||
           String(item.amount).includes(q);
         const matchesType = selectedType === 'Всі' || item.type === selectedType;
-        const matchesDate = dateFilter
-          ? item.date.startsWith(dateFilter.trim())
-          : true;
+        const from = dateFrom.trim();
+        const to = dateTo.trim();
+        const matchesDate =
+          (!from && !to) ||
+          (from && item.date >= from && (!to || item.date <= to)) ||
+          (!from && to && item.date <= to);
         return matchesSearch && matchesType && matchesDate;
       })
       .sort((a, b) => {
@@ -65,7 +69,7 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
         }
         return sortAsc ? result : -result;
       });
-  }, [expenses, search, selectedType, dateFilter, sortField, sortAsc]);
+  }, [expenses, search, selectedType, dateFrom, dateTo, sortField, sortAsc]);
 
   const toggleSort = (field: 'date' | 'amount') => {
     if (sortField === field) {
@@ -86,42 +90,58 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
           onChangeText={setSearch}
           style={[
             styles.input,
+            styles.searchInput,
             { color: theme.text, borderColor: theme.border, backgroundColor: theme.card },
           ]}
         />
-        <AppTextInput
-          placeholder="Фільтр дати (YYYY-MM або YYYY-MM-DD)"
-          placeholderTextColor={theme.muted}
-          value={dateFilter}
-          onChangeText={setDateFilter}
-          style={[
-            styles.input,
-            { color: theme.text, borderColor: theme.border, backgroundColor: theme.card },
-          ]}
-        />
+        <View style={styles.dateRangeRow}>
+          <AppTextInput
+            placeholder="Початок (YYYY-MM-DD)"
+            placeholderTextColor={theme.muted}
+            value={dateFrom}
+            onChangeText={setDateFrom}
+            keyboardType="numeric"
+            inputMode="numeric"
+            maxLength={10}
+            style={[
+              styles.input,
+              styles.dateInput,
+              { color: theme.text, borderColor: theme.border, backgroundColor: theme.card },
+            ]}
+          />
+          <AppTextInput
+            placeholder="Кінець (YYYY-MM-DD)"
+            placeholderTextColor={theme.muted}
+            value={dateTo}
+            onChangeText={setDateTo}
+            keyboardType="numeric"
+            inputMode="numeric"
+            maxLength={10}
+            style={[
+              styles.input,
+              styles.dateInput,
+              { color: theme.text, borderColor: theme.border, backgroundColor: theme.card },
+            ]}
+          />
+        </View>
       </View>
 
       <View style={styles.typesRow}>
-        <FlatList
-          horizontal
-          data={TYPE_FILTERS}
-          keyExtractor={item => item}
-          showsHorizontalScrollIndicator={false}
-          renderItem={({ item }) => {
-            const active = selectedType === item;
-            return (
-              <TouchableOpacity
-                onPress={() => setSelectedType(item)}
-                style={[
-                  styles.typeChip,
-                  { backgroundColor: active ? theme.primary : theme.card },
-                ]}
-              >
-                <Text style={{ color: active ? '#FFF' : theme.text }}>{item}</Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
+        {TYPE_FILTERS.map(item => {
+          const active = selectedType === item;
+          return (
+            <TouchableOpacity
+              key={item}
+              onPress={() => setSelectedType(item)}
+              style={[
+                styles.typeChip,
+                { backgroundColor: active ? theme.primary : theme.card },
+              ]}
+            >
+              <Text style={{ color: active ? '#FFF' : theme.text }}>{item}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <View style={styles.sortRow}>
@@ -198,12 +218,21 @@ const styles = StyleSheet.create({
   filterPanel: { flexDirection: 'column', gap: 8 },
   landscapePanel: { flexDirection: 'row', gap: 12 },
   input: { borderWidth: 1, borderRadius: 8, padding: 10, flex: 1 },
-  typesRow: { marginVertical: 8 },
+  searchInput: { minHeight: 40, paddingVertical: 10 },
+  dateRangeRow: { flexDirection: 'row', gap: 8 },
+  dateInput: { minHeight: 40 },
+  typesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    marginVertical: 8,
+  },
   typeChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    marginRight: 8,
+    marginRight: 0,
+    marginBottom: 8,
   },
   sortRow: {
     flexDirection: 'row',

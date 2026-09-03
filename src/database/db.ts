@@ -32,6 +32,15 @@ export const getExpensesFromDB = (): Expense[] => {
   return ((result.rows || []) as Record<string, unknown>[]).map(mapRow);
 };
 
+export const getExpenseFromDBById = (id: number): Expense | null => {
+  const result = db.executeSync(
+    'SELECT * FROM expenses WHERE id=? LIMIT 1;',
+    [id],
+  );
+  const row = (result.rows || []) as Record<string, unknown>[];
+  return row.length > 0 ? mapRow(row[0]) : null;
+};
+
 export const addExpenseToDB = (
   type: string,
   amount: number,

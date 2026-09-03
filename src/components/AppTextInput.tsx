@@ -1,13 +1,17 @@
 import React from 'react';
 import { TextInput, TextInputProps } from 'react-native';
 
-export function AppTextInput(props: TextInputProps) {
+export function AppTextInput({
+  keyboardType = 'default',
+  inputMode = 'text' as any,
+  ...props
+}: TextInputProps) {
   return (
     <TextInput
       autoCapitalize="none"
       {...props}
-      keyboardType="default"
-      inputMode="text"
+      keyboardType={keyboardType}
+      inputMode={inputMode}
       autoCorrect={false}
       spellCheck={false}
       autoComplete="off"
