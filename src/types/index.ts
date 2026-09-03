@@ -5,6 +5,14 @@ export type ExpenseType =
   | 'страхування'
   | 'інші витрати';
 
+export const EXPENSE_TYPES: ExpenseType[] = [
+  'заправка',
+  'ремонт',
+  'технічне обслуговування',
+  'страхування',
+  'інші витрати',
+];
+
 export interface Expense {
   id: number;
   type: ExpenseType;

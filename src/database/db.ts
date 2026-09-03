@@ -1,25 +1,35 @@
 import { open } from '@op-engineering/op-sqlite';
-import { Expense } from '../types';
+import { Expense, ExpenseType } from '../types';
 
 export const db = open({ name: 'car_expenses.sqlite' });
+
+const mapRow = (row: Record<string, unknown>): Expense => ({
+  id: Number(row.id),
+  type: row.type as ExpenseType,
+  amount: Number(row.amount),
+  date: String(row.date),
+  mileage: Number(row.mileage),
+  description: row.description == null ? '' : String(row.description),
+});
 
 export const initDB = () => {
   db.executeSync(`
     CREATE TABLE IF NOT EXISTS expenses (
-                                          id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                          type TEXT NOT NULL,
-                                          amount REAL NOT NULL,
-                                          date TEXT NOT NULL,
-                                          mileage INTEGER NOT NULL,
-                                          description TEXT
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      amount REAL NOT NULL,
+      date TEXT NOT NULL,
+      mileage INTEGER NOT NULL,
+      description TEXT
     );
   `);
 };
 
 export const getExpensesFromDB = (): Expense[] => {
-  const result = db.executeSync('SELECT * FROM expenses ORDER BY date DESC');
-
-  return (result.rows || []) as unknown as Expense[];
+  const result = db.executeSync(
+    'SELECT * FROM expenses ORDER BY date DESC, id DESC',
+  );
+  return ((result.rows || []) as Record<string, unknown>[]).map(mapRow);
 };
 
 export const addExpenseToDB = (

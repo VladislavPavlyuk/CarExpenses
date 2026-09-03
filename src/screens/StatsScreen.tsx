@@ -1,11 +1,20 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  useWindowDimensions,
+} from 'react-native';
 import { getExpensesFromDB } from '../database/db';
-import { Expense } from '../types';
+import { Expense, EXPENSE_TYPES } from '../types';
 import { ThemeContext } from '../context/ThemeContext';
 
 export const StatsScreen = ({ navigation }: any) => {
   const { theme } = useContext(ThemeContext);
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
   const [total, setTotal] = useState(0);
   const [byCategory, setByCategory] = useState<Record<string, number>>({});
   const [avgFuel, setAvgFuel] = useState(0);
@@ -13,28 +22,24 @@ export const StatsScreen = ({ navigation }: any) => {
 
   const calculateStats = () => {
     const data = getExpensesFromDB();
-
-    // 1. Загальна сума
     const totalSum = data.reduce((sum, item) => sum + item.amount, 0);
 
-    // 2. Сума за категоріями
-    const categoriesMap = data.reduce((acc: any, item) => {
-      acc[item.type] = (acc[item.type] || 0) + item.amount;
-      return acc;
-    }, {});
+    const categoriesMap: Record<string, number> = {};
+    EXPENSE_TYPES.forEach(t => {
+      categoriesMap[t] = 0;
+    });
+    data.forEach(item => {
+      categoriesMap[item.type] = (categoriesMap[item.type] || 0) + item.amount;
+    });
 
-    // 3. Середня вартість заправки
     const fuelOps = data.filter(item => item.type === 'заправка');
     const totalFuel = fuelOps.reduce((sum, item) => sum + item.amount, 0);
     const avgFuelCost = fuelOps.length > 0 ? totalFuel / fuelOps.length : 0;
 
-    // 4. Останні 3 операції
-    const recentOps = data.slice(0, 3);
-
     setTotal(totalSum);
     setByCategory(categoriesMap);
     setAvgFuel(avgFuelCost);
-    setRecent(recentOps);
+    setRecent(data.slice(0, 5));
   };
 
   useEffect(() => {
@@ -42,55 +47,77 @@ export const StatsScreen = ({ navigation }: any) => {
     return unsubscribe;
   }, [navigation]);
 
+  const categoryRows = Object.entries(byCategory);
+
   return (
-    <ScrollView
+    <FlatList
       style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      <Text style={[styles.header, { color: theme.text }]}>
-        Загальні витрати: {total.toFixed(2)} ₴
-      </Text>
-      <Text style={[styles.subHeader, { color: '#888' }]}>
-        Середня вартість заправки: {avgFuel.toFixed(2)} ₴
-      </Text>
+      data={recent}
+      keyExtractor={item => item.id.toString()}
+      ListHeaderComponent={
+        <View>
+          <View style={isLandscape ? styles.topLandscape : undefined}>
+            <View style={isLandscape ? styles.col : undefined}>
+              <Text style={[styles.header, { color: theme.text }]}>
+                Загальні витрати
+              </Text>
+              <Text style={[styles.total, { color: theme.danger }]}>
+                {total.toFixed(2)} ₴
+              </Text>
+              <Text style={[styles.subHeader, { color: theme.muted }]}>
+                Середня вартість заправки: {avgFuel.toFixed(2)} ₴
+              </Text>
+            </View>
 
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        Витрати за категоріями:
-      </Text>
-      {Object.entries(byCategory).map(([cat, amt]) => (
-        <View key={cat} style={styles.row}>
-          <Text style={{ color: theme.text, textTransform: 'capitalize' }}>
-            {cat}:
+            <View style={isLandscape ? styles.col : undefined}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Витрати за категоріями
+              </Text>
+              {categoryRows.map(([cat, amt]) => (
+                <View key={cat} style={styles.row}>
+                  <Text style={{ color: theme.text }}>{cat}</Text>
+                  <Text style={[styles.bold, { color: theme.text }]}>
+                    {amt.toFixed(2)} ₴
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>
+            Останні операції
           </Text>
-          <Text style={[styles.bold, { color: theme.text }]}>
-            {amt.toFixed(2)} ₴
+          {recent.length === 0 ? (
+            <Text style={{ color: theme.muted, marginBottom: 8 }}>
+              Поки немає записів
+            </Text>
+          ) : null}
+        </View>
+      }
+      renderItem={({ item }) => (
+        <View style={[styles.recentCard, { backgroundColor: theme.card }]}>
+          <View>
+            <Text style={{ color: theme.text, fontWeight: '600' }}>
+              {item.type}
+            </Text>
+            <Text style={{ color: theme.muted }}>{item.date}</Text>
+          </View>
+          <Text style={{ color: theme.danger, fontWeight: 'bold' }}>
+            {item.amount.toFixed(2)} ₴
           </Text>
         </View>
-      ))}
-
-      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-        Останні операції:
-      </Text>
-      {recent.map(item => (
-        <View
-          key={item.id}
-          style={[styles.recentCard, { backgroundColor: theme.card }]}
-        >
-          <Text style={{ color: theme.text }}>
-            {item.date} — {item.type}
-          </Text>
-          <Text style={{ color: '#d32f2f', fontWeight: 'bold' }}>
-            {item.amount} ₴
-          </Text>
-        </View>
-      ))}
-    </ScrollView>
+      )}
+    />
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  header: { fontSize: 22, fontWeight: 'bold' },
-  subHeader: { fontSize: 16, marginBottom: 16 },
+  topLandscape: { flexDirection: 'row', gap: 24 },
+  col: { flex: 1 },
+  header: { fontSize: 18, fontWeight: '600' },
+  total: { fontSize: 28, fontWeight: 'bold', marginVertical: 4 },
+  subHeader: { fontSize: 15, marginBottom: 16 },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -106,6 +133,7 @@ const styles = StyleSheet.create({
   recentCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 12,
     borderRadius: 8,
     marginVertical: 4,

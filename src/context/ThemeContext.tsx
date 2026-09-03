@@ -1,46 +1,74 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const THEME_KEY = 'APP_THEME';
+
+export interface AppTheme {
+  background: string;
+  text: string;
+  card: string;
+  border: string;
+  primary: string;
+  muted: string;
+  danger: string;
+}
+
 interface ThemeContextProps {
   isDarkMode: boolean;
   toggleTheme: (value: boolean) => void;
-  theme: {
-    background: string;
-    text: string;
-    card: string;
-    border: string;
-  };
+  theme: AppTheme;
 }
+
+const lightTheme: AppTheme = {
+  background: '#FFFFFF',
+  text: '#111111',
+  card: '#F8F9FA',
+  border: '#E0E0E0',
+  primary: '#007AFF',
+  muted: '#888888',
+  danger: '#d32f2f',
+};
+
+const darkTheme: AppTheme = {
+  background: '#121212',
+  text: '#FFFFFF',
+  card: '#1E1E1E',
+  border: '#333333',
+  primary: '#4DA3FF',
+  muted: '#AAAAAA',
+  danger: '#ef5350',
+};
 
 export const ThemeContext = createContext<ThemeContextProps>({
   isDarkMode: false,
   toggleTheme: () => {},
-  theme: { background: '#FFF', text: '#000', card: '#F5F5F5', border: '#CCC' },
+  theme: lightTheme,
 });
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem('APP_THEME').then(val => {
-      if (val !== null) setIsDarkMode(JSON.parse(val));
+    AsyncStorage.getItem(THEME_KEY).then(val => {
+      if (val !== null) {
+        setIsDarkMode(JSON.parse(val));
+      }
     });
   }, []);
 
   const toggleTheme = async (value: boolean) => {
     setIsDarkMode(value);
-    await AsyncStorage.setItem('APP_THEME', JSON.stringify(value));
-  };
-
-  const theme = {
-    background: isDarkMode ? '#121212' : '#FFFFFF',
-    text: isDarkMode ? '#FFFFFF' : '#000000',
-    card: isDarkMode ? '#1E1E1E' : '#F8F9FA',
-    border: isDarkMode ? '#333333' : '#E0E0E0',
+    await AsyncStorage.setItem(THEME_KEY, JSON.stringify(value));
   };
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, toggleTheme, theme }}>
+    <ThemeContext.Provider
+      value={{
+        isDarkMode,
+        toggleTheme,
+        theme: isDarkMode ? darkTheme : lightTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
