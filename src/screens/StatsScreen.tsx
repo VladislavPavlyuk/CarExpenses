@@ -9,9 +9,21 @@ import {
 import { getExpensesFromDB } from '../database/db';
 import { Expense, EXPENSE_TYPES } from '../types';
 import { ThemeContext } from '../context/ThemeContext';
+import { useI18n } from '../context/I18nContext';
+import { useCurrency } from '../context/CurrencyContext';
+
+const TYPE_LABEL_KEYS: Record<string, keyof ReturnType<typeof useI18n>['t']> = {
+  'заправка':                 'typeFuel',
+  'ремонт':                   'typeRepair',
+  'технічне обслуговування':  'typeMaintenance',
+  'страхування':              'typeInsurance',
+  'інші витрати':             'typeOther',
+};
 
 export const StatsScreen = ({ navigation }: any) => {
   const { theme } = useContext(ThemeContext);
+  const { t } = useI18n();
+  const { currency } = useCurrency();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
@@ -25,9 +37,7 @@ export const StatsScreen = ({ navigation }: any) => {
     const totalSum = data.reduce((sum, item) => sum + item.amount, 0);
 
     const categoriesMap: Record<string, number> = {};
-    EXPENSE_TYPES.forEach(t => {
-      categoriesMap[t] = 0;
-    });
+    EXPENSE_TYPES.forEach(tp => { categoriesMap[tp] = 0; });
     data.forEach(item => {
       categoriesMap[item.type] = (categoriesMap[item.type] || 0) + item.amount;
     });
@@ -58,26 +68,26 @@ export const StatsScreen = ({ navigation }: any) => {
         <View>
           <View style={isLandscape ? styles.topLandscape : undefined}>
             <View style={isLandscape ? styles.col : undefined}>
-              <Text style={[styles.header, { color: theme.text }]}>
-                Загальні витрати
-              </Text>
+              <Text style={[styles.header, { color: theme.text }]}>{t.statsTotal}</Text>
               <Text style={[styles.total, { color: theme.danger }]}>
-                {total.toFixed(2)} ₴
+                {total.toFixed(2)} {currency.symbol}
               </Text>
               <Text style={[styles.subHeader, { color: theme.muted }]}>
-                Середня вартість заправки: {avgFuel.toFixed(2)} ₴
+                {t.statsAvgFuel} {avgFuel.toFixed(2)} {currency.symbol}
               </Text>
             </View>
 
             <View style={isLandscape ? styles.col : undefined}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Витрати за категоріями
+                {t.statsByCategory}
               </Text>
               {categoryRows.map(([cat, amt]) => (
                 <View key={cat} style={styles.row}>
-                  <Text style={{ color: theme.text }}>{cat}</Text>
+                  <Text style={{ color: theme.text }}>
+                    {(t[TYPE_LABEL_KEYS[cat]] as string) ?? cat}
+                  </Text>
                   <Text style={[styles.bold, { color: theme.text }]}>
-                    {amt.toFixed(2)} ₴
+                    {amt.toFixed(2)} {currency.symbol}
                   </Text>
                 </View>
               ))}
@@ -85,11 +95,11 @@ export const StatsScreen = ({ navigation }: any) => {
           </View>
 
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Останні операції
+            {t.statsRecent}
           </Text>
           {recent.length === 0 ? (
             <Text style={{ color: theme.muted, marginBottom: 8 }}>
-              Поки немає записів
+              {t.statsNoRecords}
             </Text>
           ) : null}
         </View>
@@ -98,12 +108,12 @@ export const StatsScreen = ({ navigation }: any) => {
         <View style={[styles.recentCard, { backgroundColor: theme.card }]}>
           <View>
             <Text style={{ color: theme.text, fontWeight: '600' }}>
-              {item.type}
+              {(t[TYPE_LABEL_KEYS[item.type]] as string) ?? item.type}
             </Text>
             <Text style={{ color: theme.muted }}>{item.date}</Text>
           </View>
           <Text style={{ color: theme.danger, fontWeight: 'bold' }}>
-            {item.amount.toFixed(2)} ₴
+            {item.amount.toFixed(2)} {currency.symbol}
           </Text>
         </View>
       )}
@@ -118,17 +128,8 @@ const styles = StyleSheet.create({
   header: { fontSize: 18, fontWeight: '600' },
   total: { fontSize: 28, fontWeight: 'bold', marginVertical: 4 },
   subHeader: { fontSize: 15, marginBottom: 16 },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 16, marginBottom: 8 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
   bold: { fontWeight: 'bold' },
   recentCard: {
     flexDirection: 'row',

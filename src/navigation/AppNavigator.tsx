@@ -9,6 +9,7 @@ import { ExpenseDetailScreen } from '../screens/ExpenseDetailScreen';
 import { StatsScreen } from '../screens/StatsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { ThemeContext } from '../context/ThemeContext';
+import { useI18n } from '../context/I18nContext';
 import { HomeStackParamList, RootDrawerParamList } from './types';
 
 const Drawer = createDrawerNavigator<RootDrawerParamList>();
@@ -16,6 +17,7 @@ const Stack = createNativeStackNavigator<HomeStackParamList>();
 
 function HomeStack() {
   const { theme } = useContext(ThemeContext);
+  const { t } = useI18n();
 
   return (
     <Stack.Navigator>
@@ -23,7 +25,7 @@ function HomeStack() {
         name="ExpenseList"
         component={ExpenseListScreen}
         options={({ navigation }) => ({
-          title: 'Список витрат',
+          title: t.navList,
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
@@ -38,7 +40,7 @@ function HomeStack() {
               style={{ marginRight: 8, padding: 8 }}
             >
               <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 16 }}>
-                + Додати
+                {t.navAddBtn}
               </Text>
             </TouchableOpacity>
           ),
@@ -47,13 +49,13 @@ function HomeStack() {
       <Stack.Screen
         name="ExpenseDetail"
         component={ExpenseDetailScreen}
-        options={{ title: 'Деталі витрати' }}
+        options={{ title: t.navDetail }}
       />
       <Stack.Screen
         name="ExpenseForm"
         component={ExpenseFormScreen}
         options={({ route }) => ({
-          title: route.params?.item ? 'Редагування' : 'Додавання',
+          title: route.params?.item ? t.navEdit : t.navAdd,
         })}
       />
     </Stack.Navigator>
@@ -61,27 +63,29 @@ function HomeStack() {
 }
 
 export function AppNavigator() {
+  const { t } = useI18n();
+
   return (
     <Drawer.Navigator initialRouteName="Home">
       <Drawer.Screen
         name="Home"
         component={HomeStack}
-        options={{ headerShown: false, title: 'Список' }}
+        options={{ headerShown: false, title: t.navList }}
       />
       <Drawer.Screen
         name="AddExpense"
         component={ExpenseFormScreen}
-        options={{ title: 'Додавання' }}
+        options={{ title: t.navAdd }}
       />
       <Drawer.Screen
         name="Statistics"
         component={StatsScreen}
-        options={{ title: 'Статистика' }}
+        options={{ title: t.navStats }}
       />
       <Drawer.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: 'Налаштування' }}
+        options={{ title: t.navSettings }}
       />
     </Drawer.Navigator>
   );

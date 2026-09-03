@@ -13,12 +13,24 @@ import {
 import { addExpenseToDB, updateExpenseInDB } from '../database/db';
 import { ExpenseType, EXPENSE_TYPES } from '../types';
 import { ThemeContext } from '../context/ThemeContext';
+import { useI18n } from '../context/I18nContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { AppTextInput } from '../components/AppTextInput';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const TYPE_LABEL_KEYS: Record<string, keyof ReturnType<typeof useI18n>['t']> = {
+  'заправка':                 'typeFuel',
+  'ремонт':                   'typeRepair',
+  'технічне обслуговування':  'typeMaintenance',
+  'страхування':              'typeInsurance',
+  'інші витрати':             'typeOther',
+};
+
 export const ExpenseFormScreen = ({ route, navigation }: any) => {
   const { theme } = useContext(ThemeContext);
+  const { t } = useI18n();
+  const { currency } = useCurrency();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const editingExpense = route.params?.item;
@@ -57,19 +69,19 @@ export const ExpenseFormScreen = ({ route, navigation }: any) => {
     const numericMileage = parseInt(mileage, 10);
 
     if (!amount || !date || !mileage) {
-      Alert.alert('Помилка', 'Заповніть суму, дату та пробіг');
+      Alert.alert('', t.formErrRequired);
       return;
     }
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      Alert.alert('Помилка', 'Сума має бути додатним числом');
+      Alert.alert('', t.formErrAmount);
       return;
     }
     if (!DATE_RE.test(date)) {
-      Alert.alert('Помилка', 'Дата у форматі YYYY-MM-DD');
+      Alert.alert('', t.formErrDate);
       return;
     }
     if (isNaN(numericMileage) || numericMileage < 0) {
-      Alert.alert('Помилка', 'Пробіг має бути невід’ємним числом');
+      Alert.alert('', t.formErrMileage);
       return;
     }
 
@@ -103,20 +115,22 @@ export const ExpenseFormScreen = ({ route, navigation }: any) => {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={[styles.label, { color: theme.text }]}>Тип витрати:</Text>
+        <Text style={[styles.label, { color: theme.text }]}>{t.formExpenseType}</Text>
         <View style={styles.typesContainer}>
-          {EXPENSE_TYPES.map(t => {
-            const active = type === t;
+          {EXPENSE_TYPES.map(tp => {
+            const active = type === tp;
             return (
               <TouchableOpacity
-                key={t}
-                onPress={() => setType(t)}
+                key={tp}
+                onPress={() => setType(tp)}
                 style={[
                   styles.typeChip,
                   { backgroundColor: active ? theme.primary : theme.card },
                 ]}
               >
-                <Text style={{ color: active ? '#FFF' : theme.text }}>{t}</Text>
+                <Text style={{ color: active ? '#FFF' : theme.text }}>
+                  {(t[TYPE_LABEL_KEYS[tp]] as string) ?? tp}
+                </Text>
               </TouchableOpacity>
             );
           })}
@@ -124,7 +138,9 @@ export const ExpenseFormScreen = ({ route, navigation }: any) => {
 
         <View style={isLandscape ? styles.row : undefined}>
           <View style={isLandscape ? styles.col : undefined}>
-            <Text style={[styles.label, { color: theme.text }]}>Сума (₴):</Text>
+            <Text style={[styles.label, { color: theme.text }]}>
+              {t.formAmount.replace('₴', currency.symbol)}
+            </Text>
             <AppTextInput
               value={amount}
               onChangeText={setAmount}
@@ -132,18 +148,12 @@ export const ExpenseFormScreen = ({ route, navigation }: any) => {
               placeholderTextColor={theme.muted}
               style={[
                 styles.input,
-                {
-                  color: theme.text,
-                  borderColor: theme.border,
-                  backgroundColor: theme.card,
-                },
+                { color: theme.text, borderColor: theme.border, backgroundColor: theme.card },
               ]}
             />
           </View>
           <View style={isLandscape ? styles.col : undefined}>
-            <Text style={[styles.label, { color: theme.text }]}>
-              Дата (YYYY-MM-DD):
-            </Text>
+            <Text style={[styles.label, { color: theme.text }]}>{t.formDate}</Text>
             <AppTextInput
               value={date}
               onChangeText={setDate}
@@ -151,17 +161,13 @@ export const ExpenseFormScreen = ({ route, navigation }: any) => {
               placeholderTextColor={theme.muted}
               style={[
                 styles.input,
-                {
-                  color: theme.text,
-                  borderColor: theme.border,
-                  backgroundColor: theme.card,
-                },
+                { color: theme.text, borderColor: theme.border, backgroundColor: theme.card },
               ]}
             />
           </View>
         </View>
 
-        <Text style={[styles.label, { color: theme.text }]}>Пробіг (км):</Text>
+        <Text style={[styles.label, { color: theme.text }]}>{t.formMileage}</Text>
         <AppTextInput
           value={mileage}
           onChangeText={setMileage}
@@ -169,15 +175,11 @@ export const ExpenseFormScreen = ({ route, navigation }: any) => {
           placeholderTextColor={theme.muted}
           style={[
             styles.input,
-            {
-              color: theme.text,
-              borderColor: theme.border,
-              backgroundColor: theme.card,
-            },
+            { color: theme.text, borderColor: theme.border, backgroundColor: theme.card },
           ]}
         />
 
-        <Text style={[styles.label, { color: theme.text }]}>Опис:</Text>
+        <Text style={[styles.label, { color: theme.text }]}>{t.formDescription}</Text>
         <AppTextInput
           value={description}
           onChangeText={setDescription}
@@ -185,7 +187,7 @@ export const ExpenseFormScreen = ({ route, navigation }: any) => {
           numberOfLines={4}
           blurOnSubmit={false}
           autoCapitalize="sentences"
-          placeholder="Необов’язково"
+          placeholder={t.formDescPlaceholder}
           placeholderTextColor={theme.muted}
           style={[
             styles.input,
@@ -204,7 +206,7 @@ export const ExpenseFormScreen = ({ route, navigation }: any) => {
           onPress={handleSave}
         >
           <Text style={styles.saveText}>
-            {editingExpense ? 'Оновити' : 'Зберегти'}
+            {editingExpense ? t.formUpdate : t.formSave}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -217,23 +219,10 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 32 },
   label: { fontSize: 14, fontWeight: 'bold', marginTop: 12, marginBottom: 6 },
   input: { borderWidth: 1, borderRadius: 8, padding: 10 },
-  typesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  typeChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
+  typesContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  typeChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16 },
   row: { flexDirection: 'row', gap: 12 },
   col: { flex: 1 },
-  saveBtn: {
-    marginTop: 24,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
+  saveBtn: { marginTop: 24, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   saveText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

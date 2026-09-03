@@ -10,6 +10,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, ThemeContext } from './src/context/ThemeContext';
+import { I18nProvider } from './src/context/I18nContext';
+import { CurrencyProvider } from './src/context/CurrencyContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { initDB } from './src/database/db';
 
@@ -74,9 +76,13 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <ThemedApp />
-        </ThemeProvider>
+        <I18nProvider>
+          <CurrencyProvider>
+            <ThemeProvider>
+              <ThemedApp />
+            </ThemeProvider>
+          </CurrencyProvider>
+        </I18nProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

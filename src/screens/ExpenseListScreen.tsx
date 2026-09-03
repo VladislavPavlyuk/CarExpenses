@@ -9,32 +9,50 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { getExpensesFromDB } from '../database/db';
-import { Expense, EXPENSE_TYPES } from '../types';
+import { Expense, EXPENSE_TYPES, ExpenseType } from '../types';
 import { ThemeContext } from '../context/ThemeContext';
+import { useI18n } from '../context/I18nContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { HomeStackParamList } from '../navigation/types';
 import { AppTextInput } from '../components/AppTextInput';
 
-const TYPE_FILTERS = ['Всі', ...EXPENSE_TYPES];
-
 type Props = NativeStackScreenProps<HomeStackParamList, 'ExpenseList'>;
+
+// Сопоставление: украинское значение из БД → ключ перевода
+const TYPE_LABEL_KEYS: Record<string, keyof ReturnType<typeof useI18n>['t']> = {
+  'заправка':                 'typeFuel',
+  'ремонт':                   'typeRepair',
+  'технічне обслуговування':  'typeMaintenance',
+  'страхування':              'typeInsurance',
+  'інші витрати':             'typeOther',
+};
 
 export const ExpenseListScreen = ({ navigation }: Props) => {
   const { theme } = useContext(ThemeContext);
+  const { t } = useI18n();
+  const { currency } = useCurrency();
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
   const numColumns = isLandscape ? 2 : 1;
 
+  // Фильтр «Всі» хранится как '' (пустая строка), остальные — украинские значения из БД
+  const TYPE_FILTERS: Array<{ label: string; value: string }> = [
+    { label: t.typeAll, value: '' },
+    ...EXPENSE_TYPES.map(tp => ({
+      label: t[TYPE_LABEL_KEYS[tp]] as string,
+      value: tp,
+    })),
+  ];
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [search, setSearch] = useState('');
-  const [selectedType, setSelectedType] = useState('Всі');
+  const [selectedType, setSelectedType] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [sortField, setSortField] = useState<'date' | 'amount'>('date');
   const [sortAsc, setSortAsc] = useState(false);
 
-  const loadData = () => {
-    setExpenses(getExpensesFromDB());
-  };
+  const loadData = () => setExpenses(getExpensesFromDB());
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', loadData);
@@ -51,13 +69,13 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
           item.description.toLowerCase().includes(q) ||
           item.date.includes(q) ||
           String(item.amount).includes(q);
-        const matchesType = selectedType === 'Всі' || item.type === selectedType;
+        const matchesType = !selectedType || item.type === selectedType;
         const from = dateFrom.trim();
         const to = dateTo.trim();
         const matchesDate =
           (!from && !to) ||
-          (from && item.date >= from && (!to || item.date <= to)) ||
-          (!from && to && item.date <= to);
+          (!!from && item.date >= from && (!to || item.date <= to)) ||
+          (!from && !!to && item.date <= to);
         return matchesSearch && matchesType && matchesDate;
       })
       .sort((a, b) => {
@@ -80,11 +98,14 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
     }
   };
 
+  const typeLabel = (tp: ExpenseType): string =>
+    (t[TYPE_LABEL_KEYS[tp]] as string) ?? tp;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.filterPanel, isLandscape && styles.landscapePanel]}>
         <AppTextInput
-          placeholder="Пошук (тип, опис, дата, сума)..."
+          placeholder={t.searchPlaceholder}
           placeholderTextColor={theme.muted}
           value={search}
           onChangeText={setSearch}
@@ -96,7 +117,7 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
         />
         <View style={styles.dateRangeRow}>
           <AppTextInput
-            placeholder="Початок (YYYY-MM-DD)"
+            placeholder={t.dateFromPlaceholder}
             placeholderTextColor={theme.muted}
             value={dateFrom}
             onChangeText={setDateFrom}
@@ -110,7 +131,7 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
             ]}
           />
           <AppTextInput
-            placeholder="Кінець (YYYY-MM-DD)"
+            placeholder={t.dateToPlaceholder}
             placeholderTextColor={theme.muted}
             value={dateTo}
             onChangeText={setDateTo}
@@ -127,18 +148,18 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
       </View>
 
       <View style={styles.typesRow}>
-        {TYPE_FILTERS.map(item => {
-          const active = selectedType === item;
+        {TYPE_FILTERS.map(({ label, value }) => {
+          const active = selectedType === value;
           return (
             <TouchableOpacity
-              key={item}
-              onPress={() => setSelectedType(item)}
+              key={value}
+              onPress={() => setSelectedType(value)}
               style={[
                 styles.typeChip,
                 { backgroundColor: active ? theme.primary : theme.card },
               ]}
             >
-              <Text style={{ color: active ? '#FFF' : theme.text }}>{item}</Text>
+              <Text style={{ color: active ? '#FFF' : theme.text }}>{label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -152,7 +173,7 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
               { color: sortField === 'date' ? theme.primary : theme.text },
             ]}
           >
-            Дата {sortField === 'date' ? (sortAsc ? '▲' : '▼') : ''}
+            {t.sortDate} {sortField === 'date' ? (sortAsc ? '▲' : '▼') : ''}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => toggleSort('amount')}>
@@ -162,7 +183,7 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
               { color: sortField === 'amount' ? theme.primary : theme.text },
             ]}
           >
-            Сума {sortField === 'amount' ? (sortAsc ? '▲' : '▼') : ''}
+            {t.sortAmount} {sortField === 'amount' ? (sortAsc ? '▲' : '▼') : ''}
           </Text>
         </TouchableOpacity>
       </View>
@@ -178,7 +199,7 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
         columnWrapperStyle={numColumns > 1 ? styles.columnWrap : undefined}
         ListEmptyComponent={
           <Text style={[styles.empty, { color: theme.muted }]}>
-            Витрат не знайдено. Додайте першу операцію.
+            {t.emptyList}
           </Text>
         }
         renderItem={({ item }) => (
@@ -192,10 +213,10 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
           >
             <View style={styles.cardBody}>
               <Text style={[styles.cardTitle, { color: theme.text }]}>
-                {item.type}
+                {typeLabel(item.type)}
               </Text>
               <Text style={{ color: theme.muted }}>
-                {item.date} · {item.mileage} км
+                {item.date} · {item.mileage} {t.km}
               </Text>
               {item.description ? (
                 <Text numberOfLines={1} style={{ color: theme.muted }}>
@@ -204,7 +225,7 @@ export const ExpenseListScreen = ({ navigation }: Props) => {
               ) : null}
             </View>
             <Text style={[styles.amount, { color: theme.danger }]}>
-              {item.amount.toFixed(2)} ₴
+              {item.amount.toFixed(2)} {currency.symbol}
             </Text>
           </TouchableOpacity>
         )}
@@ -231,7 +252,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    marginRight: 0,
+    marginRight: 8,
     marginBottom: 8,
   },
   sortRow: {
